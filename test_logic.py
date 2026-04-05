@@ -4,7 +4,6 @@ from rules.ip_rules import check_ip_rules
 from scoring.risk_scorer import calculate_score
 from reporting.report_generator import generate_report
 
-
 dummy_data = {
     "rules": [
         type("Rule", (), {
