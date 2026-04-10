@@ -1,11 +1,17 @@
 def check_ip_rules(data):
     findings = []
 
-    for ip in data["floating_ips"]:
-        if not ip.fixed_ip_address:
+    for ip in data.get("floating_ips", []):
+        fixed = getattr(ip, "fixed_ip_address", None)
+        ip_addr = getattr(ip, "floating_ip_address", "Unknown")
+
+        if not fixed:
             findings.append({
-                "type": "Orphaned Floating IP",
-                "severity": "LOW"
+                "check": "Orphaned Floating IP",
+                "severity": "LOW",
+                "resource": f"Floating IP: {ip_addr}",
+                "detail": f"{ip_addr} is allocated but not attached to any instance",
+                "remediation": "Release unattached floating IPs to reduce attack surface and save cost.",
             })
 
     return findings

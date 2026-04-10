@@ -1,14 +1,15 @@
+SEVERITY_WEIGHTS = {
+    "CRITICAL": 40,
+    "HIGH": 25,
+    "MEDIUM": 15,
+    "LOW": 5,
+}
+
+
 def calculate_score(findings):
     score = 0
 
     for f in findings:
-        if f["severity"] == "CRITICAL":
-            score += 50
-        elif f["severity"] == "HIGH":
-            score += 40
-        elif f["severity"] == "MEDIUM":
-            score += 20
-        elif f["severity"] == "LOW":
-            score += 10
+        score += SEVERITY_WEIGHTS.get(f.get("severity", "LOW"), 0)
 
     return min(score, 100)

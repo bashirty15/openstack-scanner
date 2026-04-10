@@ -1,6 +1,7 @@
 from openstack import connection
 import os
 
+
 def get_connection():
     return connection.Connection(
         auth_url=os.environ["OS_AUTH_URL"],
