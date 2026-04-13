@@ -3,6 +3,8 @@ from collector.data_collector import collect_data
 from rules.network_rules import check_network_rules
 from rules.ip_rules import check_ip_rules
 from rules.storage_rules import check_storage_rules
+from rules.compute_rules import check_compute_rules
+from rules.identity_rules import check_identity_rules
 from scoring.risk_scorer import calculate_score
 from reporting.report_generator import generate_report
 
@@ -17,6 +19,8 @@ def main():
     findings += check_network_rules(data)
     findings += check_ip_rules(data)
     findings += check_storage_rules(data)
+    findings += check_compute_rules(data)
+    findings += check_identity_rules(data)
 
     score = calculate_score(findings)
     generate_report(findings, score)
