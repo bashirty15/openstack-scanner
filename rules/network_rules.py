@@ -1,7 +1,6 @@
 def check_network_rules(data):
     findings = []
 
-    # Build a lookup: security group id -> name
     sg_names = {
         sg.id: sg.name
         for sg in data.get("security_groups", [])
@@ -20,7 +19,7 @@ def check_network_rules(data):
         if not is_public:
             continue
 
-        # 🚨 Public SSH (port 22)
+        # SSH open to world
         if protocol == "tcp" and port_min == 22:
             findings.append({
                 "check": "Public SSH Access",
@@ -30,7 +29,7 @@ def check_network_rules(data):
                 "remediation": "Restrict SSH access to known IP ranges only.",
             })
 
-        # 🚨 Public RDP (port 3389)
+        # RDP open to world
         elif protocol == "tcp" and port_min == 3389:
             findings.append({
                 "check": "Public RDP Access",
@@ -40,7 +39,7 @@ def check_network_rules(data):
                 "remediation": "Restrict RDP access to known IP ranges only.",
             })
 
-        # 🚨 Public Database Ports
+        # Database ports open to world
         elif protocol == "tcp" and port_min in (3306, 5432, 1433):
             db_names = {3306: "MySQL", 5432: "PostgreSQL", 1433: "MSSQL"}
             db = db_names[port_min]
@@ -49,10 +48,30 @@ def check_network_rules(data):
                 "severity": "CRITICAL",
                 "resource": f"Security Group: {sg_name}",
                 "detail": f"Rule exposes {db} (port {port_min}) from {remote_ip}",
-                "remediation": f"Database ports should never be publicly accessible. Remove this rule immediately.",
+                "remediation": "Database ports should never be publicly accessible. Remove this rule immediately.",
             })
 
-        # 🚨 All traffic open (no protocol, no port restriction)
+        # HTTP open to world — NEW
+        elif protocol == "tcp" and port_min == 80:
+            findings.append({
+                "check": "Public HTTP Access",
+                "severity": "MEDIUM",
+                "resource": f"Security Group: {sg_name}",
+                "detail": f"Rule allows unencrypted HTTP (port 80) from {remote_ip}",
+                "remediation": "Serve traffic over HTTPS (port 443) instead. HTTP transmits data in plaintext.",
+            })
+
+        # HTTPS open to world — NEW
+        elif protocol == "tcp" and port_min == 443:
+            findings.append({
+                "check": "Public HTTPS Access",
+                "severity": "LOW",
+                "resource": f"Security Group: {sg_name}",
+                "detail": f"Rule allows HTTPS (port 443) from {remote_ip}",
+                "remediation": "Verify this exposure is intentional. Restrict to known IPs if this is an internal service.",
+            })
+
+        # Allow-all rule
         elif protocol is None and port_min is None and port_max is None:
             findings.append({
                 "check": "Allow-All Rule",
@@ -60,6 +79,18 @@ def check_network_rules(data):
                 "resource": f"Security Group: {sg_name}",
                 "detail": f"Rule allows ALL traffic from {remote_ip} with no protocol or port restriction",
                 "remediation": "Replace with specific rules that allow only required ports and protocols.",
+            })
+
+    # Security groups with no rules at all — NEW
+    sgs_with_rules = {getattr(r, "security_group_id") for r in data.get("rules", [])}
+    for sg in data.get("security_groups", []):
+        if sg.id not in sgs_with_rules:
+            findings.append({
+                "check": "Empty Security Group",
+                "severity": "LOW",
+                "resource": f"Security Group: {sg.name}",
+                "detail": f"Security group '{sg.name}' has no rules defined",
+                "remediation": "Either configure rules for this security group or delete it if unused.",
             })
 
     return findings
